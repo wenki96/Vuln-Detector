@@ -58,7 +58,11 @@ func WindowsVersion() WindowsInfo {
 	name := getRegistryVaule(`SOFTWARE\Microsoft\Windows NT\CurrentVersion`, "ProductName")
 	kv := strings.Split(name, " ")
 	if kv[1] == "Server" {
-		name = kv[0] + " " + kv[1] + " " + kv[2]
+		if len(kv) >= 4 && kv[3][0] == 'R' {
+			name = kv[0] + " " + kv[1] + " " + kv[2] + " " + kv[3]
+		} else {
+			name = kv[0] + " " + kv[1] + " " + kv[2]
+		}
 	} else {
 		name = kv[0] + " " + kv[1]
 	}

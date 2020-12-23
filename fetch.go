@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"sort"
 	"strings"
 
 	"github.com/bitly/go-simplejson"
@@ -47,42 +46,51 @@ func fetch(url string, filepath string) error {
 	return err
 }
 
-func StreamToByte(stream io.Reader) []byte {
+func streamToByte(stream io.Reader) []byte {
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(stream)
 	return buf.Bytes()
 }
 
-func unzip(gzipStream io.Reader) {
+func unzip(gzipStream io.Reader) *simplejson.Json {
 	unc, err := gzip.NewReader(gzipStream)
 	if err != nil {
 		log.Fatal("ExtractTarGz: NewReader failed")
 	}
 
-	js, err := simplejson.NewJson(StreamToByte(unc))
+	js, err := simplejson.NewJson(streamToByte(unc))
 
 	if err != nil {
 		fmt.Println("err:", err)
 	}
 
+	return js
+}
+
+func searchVulns(file string) {
+	r, err := os.Open(file)
+	if err != nil {
+		fmt.Println("error")
+	}
+	js := unzip(r)
+
 	m, h := FindPatch()
-	var r []string
-	r = append(r, h...)
+	var kbs []string
+	kbs = append(kbs, h...)
 
 	for i := 0; i < 2; i++ {
 		for k, _ := range js.Get("dependencies").MustMap() {
 			for _, v := range js.Get("dependencies").Get(k).MustStringArray() {
 				if m[v] && !m[k] {
-					r = append(r, k)
+					kbs = append(kbs, k)
 					m[k] = true
 				}
 			}
 		}
 	}
 
-	sort.Strings(r)
-
 	mm := make(map[string]bool)
+
 	result := []Vul{}
 
 	sysinfo := WindowsVersion()
