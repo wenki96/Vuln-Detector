@@ -12,6 +12,7 @@ import (
 type WindowsInfo struct {
 	SystemName string
 	Version    string
+	ReleaseID  string
 }
 
 type WinSoftware struct {
@@ -53,16 +54,24 @@ func getRegistryVaule(dir string, key string) string {
 }
 
 func WindowsVersion() WindowsInfo {
-	var v string
-	n := getRegistryVaule(`SOFTWARE\Microsoft\Windows NT\CurrentVersion`, "ProductName")
-	if t := getRegistrySubNames(`Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall`); len(t) == 0 {
-		v = "32"
+	var version string
+	name := getRegistryVaule(`SOFTWARE\Microsoft\Windows NT\CurrentVersion`, "ProductName")
+	kv := strings.Split(name, " ")
+	if kv[1] == "Server" {
+		name = kv[0] + " " + kv[1] + " " + kv[2]
 	} else {
-		v = "64"
+		name = kv[0] + " " + kv[1]
 	}
+	if t := getRegistrySubNames(`Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall`); len(t) == 0 {
+		version = "32-bit"
+	} else {
+		version = "x64"
+	}
+	releaseID := getRegistryVaule(`SOFTWARE\Microsoft\Windows NT\CurrentVersion`, "ReleaseID")
 	info := WindowsInfo{
-		SystemName: n,
-		Version:    v,
+		SystemName: name,
+		Version:    version,
+		ReleaseID:  releaseID,
 	}
 	return info
 }

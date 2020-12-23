@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -15,12 +16,13 @@ import (
 )
 
 type Vul struct {
-	Patch           string
-	Product         string
-	RestartRequired string
-	Subtype         string
-	Title           string
-	URL             string
+	CVE             string `json:"CVE"`
+	Patch           string `json:"patch"`
+	Product         string `json:"product"`
+	RestartRequired string `json:"restart_required"`
+	Subtype         string `json:"subtype"`
+	Title           string `json:"title"`
+	URL             string `json:"url"`
 }
 
 func fetch(url string, filepath string) error {
@@ -30,7 +32,9 @@ func fetch(url string, filepath string) error {
 	}
 	defer response.Body.Close()
 
-	os.Remove(filepath)
+	if _, err := os.Stat(filepath); err == nil {
+		os.Remove(filepath)
+	}
 
 	out, err := os.Create(filepath)
 	if err != nil {
@@ -81,15 +85,18 @@ func unzip(gzipStream io.Reader) {
 	mm := make(map[string]bool)
 	result := []Vul{}
 
+	sysinfo := WindowsVersion()
+
+	fmt.Println(sysinfo)
+
 	for k, _ := range js.Get("vulnerabilities").MustMap() {
 		for _, v := range js.Get("vulnerabilities").Get(k).MustArray() {
-			if strings.Contains(v.(map[string]interface{})["product"].(string), "Windows 10") &&
-				strings.Contains(v.(map[string]interface{})["product"].(string), "x64") &&
-				strings.Contains(v.(map[string]interface{})["product"].(string), "2004") &&
-				!m[v.(map[string]interface{})["patch"].(string)] {
-				if !mm[k] {
+			product := v.(map[string]interface{})["product"].(string)
+			if strings.Contains(product, sysinfo.SystemName) && strings.Contains(product, sysinfo.Version) && !m[v.(map[string]interface{})["patch"].(string)] {
+				if !mm[k] && (strings.Contains(product, "10 Version") || strings.Contains(product, "10 version")) && strings.Contains(product, sysinfo.ReleaseID) {
 					mm[k] = true
 					result = append(result, Vul{
+						CVE:             k,
 						Patch:           v.(map[string]interface{})["patch"].(string),
 						Product:         v.(map[string]interface{})["product"].(string),
 						RestartRequired: v.(map[string]interface{})["restart_required"].(string),
@@ -103,5 +110,16 @@ func unzip(gzipStream io.Reader) {
 		}
 	}
 
-	fmt.Println(result)
+	f, err := os.Create("output.json")
+	if err != nil {
+		fmt.Println("Create file failed", err.Error())
+	}
+
+	data, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		fmt.Println("Encoder failed", err.Error())
+
+	}
+
+	f.Write(data)
 }
