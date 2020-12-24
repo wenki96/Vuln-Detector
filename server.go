@@ -99,6 +99,8 @@ func searchVulns(file string) {
 
 	iswin10 := sysinfo.SystemName == "Windows 10"
 
+	sp := findServicePack()
+
 	for k, _ := range js.Get("vulnerabilities").MustMap() {
 		for _, v := range js.Get("vulnerabilities").Get(k).MustArray() {
 			product := v.(map[string]interface{})["product"].(string)
@@ -110,6 +112,11 @@ func searchVulns(file string) {
 				if !mm[k] && p {
 					//framework
 					if strings.Contains(product, ".NET Framework") && !strings.Contains(product, findDotNetFramwork()) {
+						continue
+					}
+					//service pack
+					// sp == "0" && strings.Contains(product, "Service Pack") ||
+					if sp != "0" && !strings.Contains(product, "Service Pack "+sp) {
 						continue
 					}
 					mm[k] = true

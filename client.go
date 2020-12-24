@@ -87,6 +87,9 @@ func WindowsVersion() WindowsInfo {
 		version = "x64"
 	}
 	releaseID := getRegistryVauleString(`SOFTWARE\Microsoft\Windows NT\CurrentVersion`, "ReleaseID")
+	if releaseID == "2009" { // 2009 is 20H2
+		releaseID = "20H2"
+	}
 	info := WindowsInfo{
 		SystemName: name,
 		Version:    version,
@@ -166,6 +169,20 @@ func FindSoftware() {
 	}
 	data, _ := json.Marshal(w)
 	fmt.Println(string(data))
+}
+
+func findServicePack() string {
+	key := getRegistryVauleInt(`SOFTWARE\Microsoft\Windows NT\CurrentVersion`, "CSDVersion")
+	if key == 0x100 {
+		return "1"
+	}
+	if key == 0x200 {
+		return "2"
+	}
+	if key == 0x300 {
+		return "3"
+	}
+	return "0"
 }
 
 func findDotNetFramwork() string {
